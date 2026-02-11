@@ -14,7 +14,18 @@ const teasingMessages = [
   "Ой, ледь не спіймала!",
   "Майже! Спробуй ще!",
   "Та ну, ти можеш краще!",
-  "Ок ладно... жартую!",
+  "Ну ти наполеглива...",
+  "Ок-ок, ще трішки!",
+  "Ладно, здаюсь! 💕",
+]
+
+const noMessages = [
+  "Ха, сюди не можна!",
+  "Навіть не думай!",
+  "Ні-ні-ні! 😜",
+  "Це не варіант!",
+  "Спробуй іншу кнопку 😉",
+  "Я вічно буду тікати!",
 ]
 
 function HeartIcon({ className }: { className?: string }) {
@@ -36,14 +47,15 @@ function Sparkle({ style }: { style: React.CSSProperties }) {
 }
 
 export function RunawayButton({ onCaught }: RunawayButtonProps) {
+  const [yesPosition, setYesPosition] = useState({ x: 0, y: 0 })
   const [noPosition, setNoPosition] = useState({ x: 0, y: 0 })
   const [visible, setVisible] = useState(false)
-  const escapeCountRef = useRef(0)
+  const yesEscapeCountRef = useRef(0)
+  const noEscapeCountRef = useRef(0)
   const [message, setMessage] = useState("")
-  const [isStopped, setIsStopped] = useState(false)
-  const [showHint, setShowHint] = useState(false)
+  const [yesCaught, setYesCaught] = useState(false)
   const [sparkles, setSparkles] = useState<{ id: number; x: number; y: number; size: number }[]>([])
-  const maxEscapes = 6
+  const maxYesEscapes = 7
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -62,34 +74,40 @@ export function RunawayButton({ onCaught }: RunawayButtonProps) {
     setSparkles(newSparkles)
   }, [])
 
-  const moveNoButton = useCallback(() => {
-    if (isStopped) return
+  const getRandomOffset = (range: number) => (Math.random() - 0.5) * range
 
-    const newCount = escapeCountRef.current + 1
-    escapeCountRef.current = newCount
+  const moveYesButton = useCallback(() => {
+    if (yesCaught) return
+
+    const newCount = yesEscapeCountRef.current + 1
+    yesEscapeCountRef.current = newCount
     setMessage(teasingMessages[Math.min(newCount - 1, teasingMessages.length - 1)])
 
-    if (newCount >= maxEscapes) {
-      setIsStopped(true)
-      setMessage("Ну добре, здаюсь! Тисни!")
-      setShowHint(true)
-      setNoPosition({ x: 0, y: 0 })
+    if (newCount >= maxYesEscapes) {
+      setYesCaught(true)
+      setMessage("Ну все, спіймала! Тисни Так! 💕")
+      setYesPosition({ x: 0, y: 0 })
       return
     }
 
-    const newX = (Math.random() - 0.5) * 250
-    const newY = (Math.random() - 0.5) * 200
-    setNoPosition({ x: newX, y: newY })
-  }, [isStopped])
+    setYesPosition({ x: getRandomOffset(250), y: getRandomOffset(200) })
+  }, [yesCaught])
+
+  const moveNoButton = useCallback(() => {
+    const newCount = noEscapeCountRef.current + 1
+    noEscapeCountRef.current = newCount
+    setMessage(noMessages[Math.min(newCount - 1, noMessages.length - 1)])
+    setNoPosition({ x: getRandomOffset(250), y: getRandomOffset(200) })
+  }, [])
 
   const handleYesClick = () => {
-    onCaught()
+    if (yesCaught) {
+      onCaught()
+    }
   }
 
   const handleNoClick = () => {
-    if (isStopped) {
-      onCaught()
-    }
+    moveNoButton()
   }
 
   if (!visible) return null
@@ -149,9 +167,9 @@ export function RunawayButton({ onCaught }: RunawayButtonProps) {
       </div>
 
       {/* Hint */}
-      {showHint && (
+      {yesCaught && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 animate-bounce z-50">
-          <p className="text-muted-foreground text-sm">{"(тепер тисни Ні)"}</p>
+          <p className="text-muted-foreground text-sm">{"(тисни Так! 💕)"}</p>
         </div>
       )}
 
@@ -163,41 +181,44 @@ export function RunawayButton({ onCaught }: RunawayButtonProps) {
         </div>
 
         <h2 className="font-serif text-3xl md:text-4xl text-primary text-center mb-8 text-balance">
-          {"Чи любиш ти мене?"}
+          {"Чи любкаєш ти мене??"}
         </h2>
 
         {/* Buttons */}
-        <div className="flex items-center justify-center gap-6">
-          {/* TAK button - always in place */}
+        <div className="flex items-center justify-center gap-6 relative">
+          {/* TAK button - runs away then gets caught */}
           <button
             type="button"
+            onMouseEnter={() => {
+              if (!yesCaught) moveYesButton()
+            }}
+            onTouchStart={() => {
+              if (!yesCaught) moveYesButton()
+            }}
             onClick={handleYesClick}
-            className="px-8 py-3 bg-primary text-primary-foreground rounded-full font-serif text-xl
-              shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40
-              transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer
-              animate-pulse-glow"
+            className={`px-8 py-3 rounded-full font-serif text-xl transition-all cursor-pointer ${
+              yesCaught
+                ? "bg-primary text-primary-foreground shadow-xl shadow-primary/40 scale-110 animate-pulse-glow"
+                : "bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40"
+            }`}
+            style={{
+              transform: `translate(${yesPosition.x}px, ${yesPosition.y}px)${yesCaught ? " scale(1.1)" : ""}`,
+              transition: yesCaught ? "all 0.7s ease-out" : "all 0.2s ease-out",
+            }}
           >
             {"Так"}
           </button>
 
-          {/* NI button - runs away */}
+          {/* NI button - always runs away, never catchable */}
           <button
             type="button"
-            onMouseEnter={() => {
-              if (!isStopped) moveNoButton()
-            }}
-            onTouchStart={() => {
-              if (!isStopped) moveNoButton()
-            }}
+            onMouseEnter={moveNoButton}
+            onTouchStart={moveNoButton}
             onClick={handleNoClick}
-            className={`px-8 py-3 rounded-full font-serif text-xl border-2 transition-all cursor-pointer ${
-              isStopped
-                ? "border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-100"
-                : "border-primary/40 bg-card text-foreground hover:border-primary/60"
-            } ${isStopped ? "duration-700" : "duration-200"}`}
+            className="px-8 py-3 rounded-full font-serif text-xl border-2 border-primary/40 bg-card text-foreground hover:border-primary/60 transition-all duration-200 cursor-pointer"
             style={{
               transform: `translate(${noPosition.x}px, ${noPosition.y}px)`,
-              transition: isStopped ? "all 0.7s ease-out" : "all 0.2s ease-out",
+              transition: "all 0.2s ease-out",
             }}
           >
             {"Ні"}
